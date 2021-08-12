@@ -2,6 +2,17 @@ local math = getfenv(0).math
 print("Salam Brat 696");
 DataToColor = {}
 local EventFrame = CreateFrame("Frame") 
+
+EventFrame:RegisterEvent("QUEST_DETAIL")
+EventFrame:RegisterEvent("QUEST_PROGRESS")
+EventFrame:RegisterEvent("QUEST_COMPLETE")
+EventFrame:RegisterEvent("QUEST_GREETING")
+EventFrame:RegisterEvent("QUEST_REMOVED")
+EventFrame:RegisterEvent("QUEST_FINISHED")
+EventFrame:RegisterEvent("QUEST_WATCH_UPDATE")
+EventFrame:RegisterEvent("UNIT_COMBAT")
+
+
 local coordX = CreateFrame("Frame", nil, UIParent) 
 local coordY = CreateFrame("Frame", nil, UIParent) 
 local zoneName = CreateFrame("Frame", nil, UIParent) 
@@ -16,12 +27,26 @@ local targetNameL = CreateFrame("Frame", nil, UIParent)
 local targetHealth = CreateFrame("Frame", nil, UIParent)
 local targetHealthMax = CreateFrame("Frame", nil, UIParent)
 local targetLVL_DISTANCE_RANGE = CreateFrame("Frame", nil, UIParent)
-
+local quest_data = CreateFrame("Frame", nil, UIParent)
+local combat_data = CreateFrame("Frame", nil, UIParent)
+local CcoordX = CreateFrame("Frame", nil, UIParent) 
+local CcoordY = CreateFrame("Frame", nil, UIParent) 
+local counter = 0
 
 SLASH_HELLO_WORLD1 = '/q';
 
 function EventFrame:OnEvent(event, ...) 
-	print("Salam Brat:", event)
+	if (event == "QUEST_DETAIL") then
+		print(counter)
+		counter = counter + 1 
+		
+	elseif (event == "QUEST_COMPLETE") then
+		print(counter)
+		counter = counter + 1 
+	elseif (event == "UNIT_COMBAT") then
+		print("wtf")
+		counter = counter + 1 
+	end
 	self[event](self, ...) 
 end
 EventFrame:SetScript("OnEvent", EventFrame.OnEvent)
@@ -145,8 +170,33 @@ function EventFrame:PLAYER_LOGIN()
 	targetLVL_DISTANCE_RANGE:SetPoint("TOPLEFT",size*13, 0)
 	targetLVL_DISTANCE_RANGE:Show()
 
+	quest_data:SetFrameStrata("BACKGROUND")
+	quest_data:SetSize(size, size) 
+	quest_data.texture = quest_data:CreateTexture()
+	quest_data.texture:SetTexture("Interface\\AddOns\\SalamBrat-696 2.0\\s\\qwe")
+	quest_data.texture:SetAllPoints(quest_data)
+	quest_data:SetPoint("TOPLEFT",size*14, 0)
+	quest_data:Show()
+
+	CcoordX:SetFrameStrata("BACKGROUND")
+	CcoordX:SetSize(size, size) 
+	CcoordX.texture = CcoordX:CreateTexture()
+	CcoordX.texture:SetTexture("Interface\\AddOns\\SalamBrat-696 2.0\\s\\qwe")
+	CcoordX.texture:SetAllPoints(CcoordX)
+	CcoordX:SetPoint("TOPLEFT",size*15, 0)
+	CcoordX:Show()
+
+	CcoordY:SetFrameStrata("BACKGROUND")
+	CcoordY:SetSize(size, size) 
+	CcoordY.texture = CcoordY:CreateTexture()
+	CcoordY.texture:SetTexture("Interface\\AddOns\\SalamBrat-696 2.0\\s\\qwe")
+	CcoordY.texture:SetAllPoints(CcoordY)
+	CcoordY:SetPoint("TOPLEFT",size*16, 0)
+	CcoordY:Show()
 end 
 local math = getfenv(0).math
+
+
 
 function StringToASCIIHex(str)
     -- Converts string to upper case so only 2 digit ASCII values
@@ -242,7 +292,12 @@ function GetZoneName(partition)
 end
 
 function EventFrame:OnUpdate() 
-
+	local in_combat = 0;
+	if (UnitAffectingCombat("player")) then
+		in_combat = 1
+	else
+		in_combat = 0
+	end
 	local health = UnitHealth("player")
 	local px, py = C_Map.GetPlayerMapPosition(C_Map.GetBestMapForUnit("player"), "player"):GetXY()
 	local x1, x2 = math.modf(px*255)
@@ -251,10 +306,11 @@ function EventFrame:OnUpdate()
 	local zone = StringToASCIIHex(GetZoneText())
 	local targetN = StringToASCIIHex(GetZoneText())
 	local base, modifier = UnitRangedAttack("unit");
+	_, isUsable, notEnoughMana = GetActionCooldown(2)
 
 	-- print(format("%f %f %f", x1/255, x2, facing/7))
 	coordX.texture:SetVertexColor(x1/255, x2, facing/6.28318530718) -- x cords, facing
-	coordY.texture:SetVertexColor(y1/255, y2, 0) -- y cords
+	coordY.texture:SetVertexColor(y1/255, y2, in_combat) -- y cords and if in combat
 	zoneName.texture:SetVertexColor(tonumber(zone:sub(1,2))/255, tonumber(zone:sub(3,4))/255, tonumber(zone:sub(5,6))/255) -- Get name of first 6 characters of zone
 	maxHealth.texture:SetVertexColor(integerToColor(UnitHealthMax("player"))) -- Represents maximum amount of health
 	currentHealth.texture:SetVertexColor(integerToColor(UnitHealth("player"))) -- Represents current amount of health
@@ -266,7 +322,9 @@ function EventFrame:OnUpdate()
 	targetNameL.texture:SetVertexColor(integerToColor(GetTargetName(1)))
 	targetHealthMax.texture:SetVertexColor(integerToColor(UnitHealthMax("target")))
 	targetHealth.texture:SetVertexColor(integerToColor(UnitHealth("target")))
-	targetLVL_DISTANCE_RANGE.texture:SetVertexColor(UnitLevel("target")/255, 0, (base + modifier)/255) -- enemy lvl, range to enemy, eneny attack range
+	targetLVL_DISTANCE_RANGE.texture:SetVertexColor(UnitLevel("target")/255, isUsable, (base + modifier)/255) -- enemy lvl, is used skill 2, eneny attack range
+	quest_data.texture:SetVertexColor(integerToColor(counter)) -- counter incr if i accept quest
+
 
 	
 end
@@ -276,13 +334,15 @@ EventFrame:SetScript("OnUpdate", EventFrame.OnUpdate)
 function SlashCmdList.HELLO_WORLD(msg, editbox)
 	local type, id, info = GetCursorInfo("player")
 	base, modifier = UnitRangedAttack("target");
-	print(isInRange())
+	_, isUsable, notEnoughMana = GetActionCooldown(2)
+
+
+	print(UnitAffectingCombat("player"))
 	print("Level "..UnitLevel("target"))
 	local facing = GetPlayerFacing();
 	local zone = StringToASCIIHex(GetZoneText())
 	local mana = UnitPower("player");
 	local target = integerToColor(GetTargetName(0))
-
 	local px, py = C_Map.GetPlayerMapPosition(C_Map.GetBestMapForUnit("player"), "player"):GetXY()
 	print(format("x: %.2f y: %.2f facing: %f", px*100, py*100, facing));
 
